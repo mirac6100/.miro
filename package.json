@@ -1,0 +1,39 @@
+{
+  "name": "miro-player",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^37.2.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.miracthedev.miroplayer",
+    "productName": "MiroPlayer",
+    "files": [
+      "**/*"
+    ],
+    "win": {
+      "icon": "miro,256x256.ico",
+      "target": [
+        "nsis"
+      ],
+      "fileAssociations": [
+        {
+          "ext": "miro",
+          "name": "Miro Ses Dosyası",
+          "description": "MİRO ses dosyası",
+          "icon": "miro,64x64.ico"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Miro Player</title>
+<style>
+  body {
+    background: #121212;
+    color: #eee;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0; padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 {
+    margin-bottom: 10px;
+    user-select: none;
+  }
+  p.info {
+    margin-bottom: 20px;
+    user-select: none;
+  }
+  p.info a {
+    color: #0af;
+    text-decoration: none;
+  }
+  p.info a:hover {
+    text-decoration: underline;
+  }
+  #fileName {
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    color: #0af;
+    user-select: text;
+  }
+  #status {
+    margin-top: 10px;
+    color: #faa;
+    min-height: 1.3em;
+    user-select: none;
+  }
+  audio {
+    display: none;
+  }
+  .player-controls {
+    background: #222;
+    border-radius: 12px;
+    box-shadow: 0 0 20px #0af66a66;
+    padding: 15px 25px;
+    width: 100%;
+    max-width: 700px;
+    user-select: none;
+  }
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 12px;
+  }
+  button, input[type=range], select {
+    cursor: pointer;
+  }
+  button {
+    background: #0af;
+    border: none;
+    color: #111;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 8px 14px;
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+    user-select: none;
+  }
+  button:hover {
+    background: #08c;
+  }
+  #progressBar {
+    flex-grow: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    background: #444;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #progressBar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: #0af;
+    border-radius: 50%;
+    cursor: pointer;
+    margin-top: -4px;
+  }
+  #progressBar::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    background: #0af;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  #timeDisplay {
+    width: 80px;
+    text-align: center;
+    font-family: monospace;
+    font-size: 1rem;
+    user-select: none;
+  }
+  #volumeControl {
+    width: 100px;
+  }
+  #speedControl {
+    background: #333;
+    border-radius: 6px;
+    padding: 6px;
+    color: #eee;
+    font-weight: 600;
+    border: none;
+    user-select: none;
+  }
+  #spectrum {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 700px;
+    height: 120px;
+    border-radius: 12px;
+    background: #111;
+    box-shadow: 0 0 15px #0af66a66 inset;
+    user-select: none;
+  }
+  .file-input-section {
+    margin-bottom: 20px;
+  }
+  .file-input {
+    background: #333;
+    border: 2px dashed #0af;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  .file-input:hover {
+    background: #444;
+  }
+  .file-input input {
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <h1>Miro Player</h1>
+  <p class="info">💡 Bir mp3 veya wav dosyasını miro dosyasına dönüştürmek için, <a href="https://miro.fwh.is" target="_blank" rel="noopener noreferrer">resmi web sitemizi</a> ziyaret edin.</p>
+  
+  <div class="file-input-section">
+    <div class="file-input" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".miro" />
+      <p>🎵 .miro dosyası seçmek için tıklayın</p>
+    </div>
+  </div>
+  
+  <div id="fileName">Henüz dosya açılmadı.</div>
+  <div class="player-controls" aria-label="Oynatıcı Kontrolleri">
+    <div class="controls-row">
+      <button id="btnPlayPause" aria-label="Oynat / Duraklat">▶️</button>
+      <input type="range" id="progressBar" min="0" max="100" value="0" aria-label="İlerleme Çubuğu" />
+      <div id="timeDisplay" aria-live="polite">00:00 / 00:00</div>
+    </div>
+    <div class="controls-row" style="justify-content: space-between;">
+      <label for="volumeControl">Ses:</label>
+      <input type="range" id="volumeControl" min="0" max="1" step="0.01" value="1" aria-label="Ses Seviyesi" />
+      
+      <label for="speedControl">Hız:</label>
+      <select id="speedControl" aria-label="Oynatma Hızı">
+        <option value="0.5">0.5x</option>
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      </select>
+
+      <button id="btnLoop" aria-pressed="false" title="Tekrar Modu">🔁</button>
+    </div>
+  </div>
+
+  <canvas id="spectrum" aria-label="Ses Spektrum Görüntüsü"></canvas>
+
+  <audio id="audioPlayer" preload="auto"></audio>
+  <div id="status" role="alert" aria-live="assertive"></div>
+
+<script>
+(function() {
+window.addEventListener('DOMContentLoaded', function() {
+  const fileNameDiv = document.getElementById('fileName');
+  const audioPlayer = document.getElementById('audioPlayer');
+  const btnPlayPause = document.getElementById('btnPlayPause');
+  const progressBar = document.getElementById('progressBar');
+  const timeDisplay = document.getElementById('timeDisplay');
+  const volumeControl = document.getElementById('volumeControl');
+  const speedControl = document.getElementById('speedControl');
+  const btnLoop = document.getElementById('btnLoop');
+  const statusDiv = document.getElementById('status');
+  const spectrum = document.getElementById('spectrum');
+  const ctx = spectrum.getContext('2d');
+  const fileInput = document.getElementById('fileInput');
+
+  let isSeeking = false;
+  let audioContext, analyser, sourceNode, dataArray, animationId;
+
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  function resizeCanvas() {
+    spectrum.width = spectrum.clientWidth * devicePixelRatio;
+    spectrum.height = spectrum.clientHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function drawSpectrum() {
+    if (!analyser) return;
+    const width = spectrum.clientWidth;
+    const height = spectrum.clientHeight;
+    const barCount = 64;
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.clearRect(0, 0, width, height);
+
+    const barWidth = width / barCount;
+    for (let i = 0; i < barCount; i++) {
+      const value = dataArray[i];
+      const barHeight = (value / 255) * height;
+
+      const hue = 180 - (value / 255) * 180;
+      ctx.fillStyle = 'hsl(' + hue + ', 100%, 60%)';
+
+      ctx.fillRect(i * barWidth, height - barHeight, barWidth * 0.8, barHeight);
+    }
+    animationId = requestAnimationFrame(drawSpectrum);
+  }
+
+  let audioContextCreated = false;
+
+  function setupAudioContext() {
+    // Sadece ilk seferde oluştur
+    if (audioContextCreated) return;
+    
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+    }
+    
+    setTimeout(function() {
+      audioContext = new AudioContext();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 128;
+      const bufferLength = analyser.frequencyBinCount;
+      dataArray = new Uint8Array(bufferLength);
+
+      sourceNode = audioContext.createMediaElementSource(audioPlayer);
+      sourceNode.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      audioContextCreated = true;
+      drawSpectrum();
+    }, 100);
+  }
+  
+  function setupAudioEvents() {
+    const audio = audioPlayer;
+    
+    audio.addEventListener('play', function() {
+      btnPlayPause.textContent = '⏸️';
+      statusDiv.textContent = 'Çalıyor...';
+    });
+
+    audio.addEventListener('pause', function() {
+      btnPlayPause.textContent = '▶️';
+      statusDiv.textContent = 'Duraklatıldı.';
+    });
+
+    audio.addEventListener('timeupdate', function() {
+      if (!isSeeking) {
+        const current = audio.currentTime;
+        const duration = audio.duration || 0;
+        progressBar.max = duration;
+        progressBar.value = current;
+        timeDisplay.textContent = formatTime(current) + ' / ' + formatTime(duration);
+      }
+    });
+  }
+
+  async function loadMiroFile(file) {
+    fileNameDiv.textContent = 'Yükleniyor: ' + file.name;
+    statusDiv.textContent = '';
+    try {
+      const text = await file.text();
+      const dataLine = text.split('\n').find(function(line) { return line.startsWith('data='); });
+      if (!dataLine) throw new Error('Geçerli bir .miro dosyası değil!');
+
+      const base64Data = dataLine.slice(5).trim();
+
+      audioPlayer.pause();
+      audioPlayer.src = 'data:audio/wav;base64,' + base64Data;
+      audioPlayer.load();
+
+      btnPlayPause.textContent = '▶️';
+      progressBar.value = 0;
+      timeDisplay.textContent = '00:00 / 00:00';
+      btnLoop.setAttribute('aria-pressed', 'false');
+      btnLoop.style.color = '#eee';
+
+      fileNameDiv.textContent = 'Dosya: ' + file.name;
+      statusDiv.textContent = 'Yüklendi. Oynatmak için ▶️ tuşuna basın.';
+
+      // Sadece ilk dosyada context oluştur
+      if (!audioContextCreated) {
+        setupAudioContext();
+      }
+
+    } catch (err) {
+      fileNameDiv.textContent = 'Hata: ' + err.message;
+      statusDiv.textContent = '';
+    }
+  }
+
+  async function handleOpenMiro(filePath) {
+    audioPlayer.pause();
+    audioPlayer.currentTime = 0;
+    
+    fileNameDiv.textContent = 'Yükleniyor: ' + filePath;
+    statusDiv.textContent = '';
+    try {
+      const response = await fetch('file://' + filePath);
+      if (!response.ok) throw new Error('Dosya açılamadı.');
+
+      const text = await response.text();
+      const dataLine = text.split('\n').find(function(line) { return line.startsWith('data='); });
+      if (!dataLine) throw new Error('Geçerli bir .miro dosyası değil!');
+
+      const base64Data = dataLine.slice(5).trim();
+
+      audioPlayer.src = 'data:audio/wav;base64,' + base64Data;
+      audioPlayer.load();
+
+      btnPlayPause.textContent = '▶️';
+      progressBar.value = 0;
+      timeDisplay.textContent = '00:00 / 00:00';
+      btnLoop.setAttribute('aria-pressed', 'false');
+      btnLoop.style.color = '#eee';
+
+      fileNameDiv.textContent = 'Dosya: ' + filePath.split(/[\\/]/).pop();
+      statusDiv.textContent = 'Yüklendi. Oynatmak için ▶️ tuşuna basın.';
+
+      // Sadece ilk dosyada context oluştur
+      if (!audioContextCreated) {
+        setupAudioContext();
+      }
+
+    } catch (err) {
+      fileNameDiv.textContent = 'Hata: ' + err.message;
+      statusDiv.textContent = '';
+      audioPlayer.src = '';
+    }
+  }
+
+  fileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      loadMiroFile(file);
+    }
+  });
+
+  if (window.electronAPI && window.electronAPI.onOpenMiro) {
+    window.electronAPI.onOpenMiro(handleOpenMiro);
+  }
+
+  window.audioPlayer = audioPlayer;
+  setupAudioEvents();
+
+  btnPlayPause.addEventListener('click', function() {
+    if (audioContext && audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    if (audioPlayer.paused) {
+      audioPlayer.play().catch(function(e) {
+        statusDiv.textContent = 'Oynatma hatası: ' + e.message;
+      });
+    } else {
+      audioPlayer.pause();
+    }
+  });
+
+  progressBar.addEventListener('input', function() {
+    isSeeking = true;
+    const val = progressBar.value;
+    timeDisplay.textContent = formatTime(val) + ' / ' + formatTime(audioPlayer.duration || 0);
+  });
+
+  progressBar.addEventListener('change', function() {
+    audioPlayer.currentTime = progressBar.value;
+    isSeeking = false;
+  });
+
+  volumeControl.addEventListener('input', function() {
+    audioPlayer.volume = volumeControl.value;
+  });
+
+  speedControl.addEventListener('change', function() {
+    audioPlayer.playbackRate = parseFloat(speedControl.value);
+  });
+
+  btnLoop.addEventListener('click', function() {
+    audioPlayer.loop = !audioPlayer.loop;
+    btnLoop.setAttribute('aria-pressed', audioPlayer.loop.toString());
+    btnLoop.style.color = audioPlayer.loop ? '#0af' : '#eee';
+  });
+
+  audioPlayer.volume = volumeControl.value;
+});
+})();
+</script>
+</body>
+</html>
